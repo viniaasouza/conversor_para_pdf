@@ -3,15 +3,14 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Transformador de TXT para PDF</title>
+    <title>Transformador de Arquivos para PDF</title>
     <!-- Incluindo Tailwind CSS -->
     <script src="https://cdn.tailwindcss.com"></script>
     <!-- Incluindo a biblioteca jsPDF -->
     <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
     <style>
-        /* Estilo para centralizar o conteúdo e dar uma aparência agradável */
         body {
-            font-family: 'Inter', sans-serif; /* Fonte padrão sugerida */
+            font-family: 'Inter', sans-serif;
         }
         .container-app {
             min-height: 100vh;
@@ -19,21 +18,21 @@
             flex-direction: column;
             align-items: center;
             justify-content: center;
-            background-color: #f3f4f6; /* cinza claro de fundo */
+            background-color: #f3f4f6;
             padding: 20px;
         }
         .card {
             background-color: white;
-            padding: 2rem; /* Aumentando o padding */
-            border-radius: 0.75rem; /* Bordas mais arredondadas */
+            padding: 2rem;
+            border-radius: 0.75rem;
             box-shadow: 0 10px 15px -3px rgba(0, 0, 0, 0.1), 0 4px 6px -2px rgba(0, 0, 0, 0.05);
             width: 100%;
-            max-width: 500px; /* Largura máxima do card */
+            max-width: 600px; /* Aumentado para acomodar mais controles */
         }
         .file-input-label {
             display: block;
             padding: 0.75rem 1.25rem;
-            border: 2px dashed #cbd5e1; /* Borda tracejada */
+            border: 2px dashed #cbd5e1;
             border-radius: 0.5rem;
             text-align: center;
             cursor: pointer;
@@ -43,27 +42,91 @@
             background-color: #e9ecef;
             border-color: #a0aec0;
         }
-        #fileName {
+        #fileName, #imageFileInfo {
             margin-top: 0.5rem;
             font-style: italic;
-            color: #4a5568; /* cinza escuro */
+            color: #4a5568;
+        }
+        #imagePreview {
+            max-width: 100%;
+            max-height: 300px;
+            margin-top: 1rem;
+            border-radius: 0.5rem;
+            border: 1px solid #e2e8f0;
+        }
+        /* Esconder canvas por padrão, pois só é usado para processamento */
+        #processingCanvas {
+            display: none;
+        }
+        .slider-container {
+            margin-top: 1rem;
+            margin-bottom: 1rem;
+        }
+        .slider-container label {
+            display: block;
+            margin-bottom: 0.25rem;
+            color: #4a5568;
+            font-size: 0.875rem;
+        }
+        .slider-container input[type="range"] {
+            width: 100%;
         }
     </style>
 </head>
 <body>
     <div class="container-app">
         <div class="card">
-            <h1 class="text-3xl font-bold text-center text-gray-800 mb-8">Transformador de TXT para PDF</h1>
+            <h1 class="text-3xl font-bold text-center text-gray-800 mb-6">Transformador de Arquivos para PDF</h1>
 
-            <div class="mb-6">
-                <label for="fileInput" class="file-input-label">
-                    <span class="text-gray-700">Clique para selecionar um arquivo .txt</span>
-                    <input type="file" id="fileInput" class="hidden" accept=".txt">
-                </label>
-                <p id="fileName" class="text-sm text-center"></p>
+            <div class="mb-4">
+                <label for="conversionType" class="block text-sm font-medium text-gray-700 mb-1">Tipo de Conversão:</label>
+                <select id="conversionType" class="block w-full py-2 px-3 border border-gray-300 bg-white rounded-md shadow-sm focus:outline-none focus:ring-indigo-500 focus:border-indigo-500 sm:text-sm">
+                    <option value="txtToPdf">Texto (.txt) para PDF</option>
+                    <option value="imgToScanPdf">Foto para PDF Digitalizado</option>
+                </select>
             </div>
 
-            <button id="convertToPdfButton" class="w-full bg-blue-600 hover:bg-blue-700 text-white font-semibold py-3 px-4 rounded-lg shadow-md transition duration-150 ease-in-out disabled:opacity-50 disabled:cursor-not-allowed">
+            <!-- Seção para TXT para PDF -->
+            <div id="txtInputSection">
+                <div class="mb-6">
+                    <label for="fileInputTxt" class="file-input-label">
+                        <span id="txtInputLabel" class="text-gray-700">Clique para selecionar um arquivo .txt</span>
+                        <input type="file" id="fileInputTxt" class="hidden" accept=".txt">
+                    </label>
+                    <p id="fileName" class="text-sm text-center"></p>
+                </div>
+            </div>
+
+            <!-- Seção para Imagem para PDF Digitalizado -->
+            <div id="imgInputSection" class="hidden">
+                <div class="mb-4">
+                    <label for="fileInputImg" class="file-input-label">
+                        <span id="imgInputLabel" class="text-gray-700">Clique para selecionar uma imagem (.jpg, .png)</span>
+                        <input type="file" id="fileInputImg" class="hidden" accept="image/jpeg, image/png">
+                    </label>
+                    <p id="imageFileInfo" class="text-sm text-center"></p>
+                </div>
+                <div class="text-center">
+                    <img id="imagePreview" src="#" alt="Prévia da Imagem" class="hidden"/>
+                    <canvas id="processingCanvas"></canvas> <!-- Canvas para processamento -->
+                </div>
+
+                <div id="imageControls" class="hidden mt-4">
+                    <div class="slider-container">
+                        <label for="brightnessSlider">Brilho: <span id="brightnessValue">100</span>%</label>
+                        <input type="range" id="brightnessSlider" min="0" max="200" value="100" class="w-full">
+                    </div>
+                    <div class="slider-container">
+                        <label for="contrastSlider">Contraste: <span id="contrastValue">100</span>%</label>
+                        <input type="range" id="contrastSlider" min="0" max="200" value="100" class="w-full">
+                    </div>
+                    <button id="applyScanEffectButton" class="w-full mt-2 bg-gray-500 hover:bg-gray-600 text-white font-semibold py-2 px-4 rounded-lg shadow-md transition duration-150 ease-in-out">
+                        Aplicar Efeito de Digitalização e Ver Prévia
+                    </button>
+                </div>
+            </div>
+
+            <button id="convertToPdfButton" class="w-full mt-6 bg-blue-600 hover:bg-blue-700 text-white font-semibold py-3 px-4 rounded-lg shadow-md transition duration-150 ease-in-out disabled:opacity-50 disabled:cursor-not-allowed">
                 Transformar para PDF
             </button>
 
@@ -78,114 +141,305 @@
 
     <script>
         // Referências aos elementos do DOM
-        const fileInput = document.getElementById('fileInput');
+        const conversionTypeSelect = document.getElementById('conversionType');
+        const txtInputSection = document.getElementById('txtInputSection');
+        const imgInputSection = document.getElementById('imgInputSection');
+        
+        const fileInputTxt = document.getElementById('fileInputTxt');
         const fileNameDisplay = document.getElementById('fileName');
+        
+        const fileInputImg = document.getElementById('fileInputImg');
+        const imageFileInfoDisplay = document.getElementById('imageFileInfo');
+        const imagePreview = document.getElementById('imagePreview');
+        const processingCanvas = document.getElementById('processingCanvas');
+        const ctx = processingCanvas.getContext('2d');
+        const imageControls = document.getElementById('imageControls');
+        const brightnessSlider = document.getElementById('brightnessSlider');
+        const contrastSlider = document.getElementById('contrastSlider');
+        const brightnessValueDisplay = document.getElementById('brightnessValue');
+        const contrastValueDisplay = document.getElementById('contrastValue');
+        const applyScanEffectButton = document.getElementById('applyScanEffectButton');
+
         const convertToPdfButton = document.getElementById('convertToPdfButton');
         const statusMessage = document.getElementById('statusMessage');
         const errorMessage = document.getElementById('errorMessage');
 
         let selectedFile = null;
+        let originalImage = null; // Para guardar a imagem original para reprocessamento
+        let imageProcessed = false; // Flag para saber se o efeito de digitalização foi aplicado
 
         // Inicialmente, desabilitar o botão de conversão
         convertToPdfButton.disabled = true;
 
-        // Event listener para a seleção de arquivo
-        fileInput.addEventListener('change', function(event) {
+        // Função para resetar o estado da UI
+        function resetUI() {
+            fileNameDisplay.textContent = '';
+            imageFileInfoDisplay.textContent = '';
+            imagePreview.classList.add('hidden');
+            imagePreview.src = '#';
+            imageControls.classList.add('hidden');
+            convertToPdfButton.disabled = true;
+            statusMessage.textContent = '';
+            errorMessage.textContent = '';
+            selectedFile = null;
+            originalImage = null;
+            imageProcessed = false;
+            fileInputTxt.value = '';
+            fileInputImg.value = '';
+            brightnessSlider.value = 100;
+            contrastSlider.value = 100;
+            brightnessValueDisplay.textContent = '100';
+            contrastValueDisplay.textContent = '100';
+        }
+        
+        // Event listener para o tipo de conversão
+        conversionTypeSelect.addEventListener('change', function() {
+            resetUI();
+            if (this.value === 'txtToPdf') {
+                txtInputSection.classList.remove('hidden');
+                imgInputSection.classList.add('hidden');
+            } else {
+                txtInputSection.classList.add('hidden');
+                imgInputSection.classList.remove('hidden');
+            }
+        });
+
+        // Event listener para a seleção de arquivo de TEXTO
+        fileInputTxt.addEventListener('change', function(event) {
             selectedFile = event.target.files[0];
             if (selectedFile) {
-                // Verifica se o arquivo é do tipo .txt
                 if (selectedFile.type === "text/plain" || selectedFile.name.endsWith('.txt')) {
                     fileNameDisplay.textContent = `Arquivo selecionado: ${selectedFile.name}`;
-                    convertToPdfButton.disabled = false; // Habilita o botão
+                    convertToPdfButton.disabled = false;
                     statusMessage.textContent = '';
                     errorMessage.textContent = '';
                 } else {
                     fileNameDisplay.textContent = 'Por favor, selecione um arquivo .txt válido.';
                     errorMessage.textContent = 'Tipo de arquivo inválido. Apenas .txt são permitidos.';
                     selectedFile = null;
-                    convertToPdfButton.disabled = true; // Mantém/desabilita o botão
+                    convertToPdfButton.disabled = true;
                 }
             } else {
-                fileNameDisplay.textContent = '';
-                selectedFile = null;
-                convertToPdfButton.disabled = true; // Desabilita o botão se nenhum arquivo for selecionado
+                resetUI();
             }
         });
+
+        // Event listener para a seleção de arquivo de IMAGEM
+        fileInputImg.addEventListener('change', function(event) {
+            selectedFile = event.target.files[0];
+            imageProcessed = false; // Resetar flag de processamento
+            if (selectedFile) {
+                if (selectedFile.type.startsWith('image/')) {
+                    imageFileInfoDisplay.textContent = `Arquivo selecionado: ${selectedFile.name}`;
+                    
+                    const reader = new FileReader();
+                    reader.onload = function(e) {
+                        originalImage = new Image();
+                        originalImage.onload = () => {
+                            // Exibe a imagem original
+                            imagePreview.src = e.target.result;
+                            imagePreview.classList.remove('hidden');
+                            imageControls.classList.remove('hidden');
+                            // Prepara o canvas com a imagem original para processamento inicial
+                            processingCanvas.width = originalImage.width;
+                            processingCanvas.height = originalImage.height;
+                            ctx.drawImage(originalImage, 0, 0);
+                            convertToPdfButton.disabled = false; // Habilita o botão, mas idealmente após aplicar o efeito
+                            statusMessage.textContent = 'Ajuste o brilho/contraste e aplique o efeito de digitalização.';
+                        }
+                        originalImage.src = e.target.result;
+                    }
+                    reader.readAsDataURL(selectedFile);
+                    errorMessage.textContent = '';
+                } else {
+                    imageFileInfoDisplay.textContent = 'Por favor, selecione um arquivo de imagem válido (.jpg, .png).';
+                    errorMessage.textContent = 'Tipo de arquivo inválido. Apenas imagens são permitidas.';
+                    selectedFile = null;
+                    convertToPdfButton.disabled = true;
+                    imageControls.classList.add('hidden');
+                    imagePreview.classList.add('hidden');
+                }
+            } else {
+                resetUI();
+            }
+        });
+
+        // Funções de processamento de imagem
+        function applyImageFilters() {
+            if (!originalImage) return;
+
+            processingCanvas.width = originalImage.width;
+            processingCanvas.height = originalImage.height;
+            ctx.drawImage(originalImage, 0, 0); // Começa com a imagem original
+
+            const imageData = ctx.getImageData(0, 0, processingCanvas.width, processingCanvas.height);
+            const data = imageData.data;
+            
+            const brightness = parseInt(brightnessSlider.value) / 100; // 0 a 2
+            const contrast = parseInt(contrastSlider.value) / 100; // 0 a 2
+
+            // Aplicar brilho e contraste
+            for (let i = 0; i < data.length; i += 4) {
+                // Brilho
+                data[i] = Math.max(0, Math.min(255, data[i] * brightness)); // Red
+                data[i + 1] = Math.max(0, Math.min(255, data[i + 1] * brightness)); // Green
+                data[i + 2] = Math.max(0, Math.min(255, data[i + 2] * brightness)); // Blue
+
+                // Contraste - fator = (259 * (contrast + 255)) / (255 * (259 - contrast));
+                // Simplificado: (val - 128) * contrastFactor + 128
+                let contrastFactor = contrast; // Usar o valor do slider diretamente como fator de multiplicação simples
+                                            // Para um contraste mais "padrão", a fórmula é mais complexa.
+                                            // Aqui, 1.0 é normal, <1 diminui, >1 aumenta.
+                data[i] = Math.max(0, Math.min(255, (data[i] - 128) * contrastFactor + 128));
+                data[i + 1] = Math.max(0, Math.min(255, (data[i + 1] - 128) * contrastFactor + 128));
+                data[i + 2] = Math.max(0, Math.min(255, (data[i + 2] - 128) * contrastFactor + 128));
+            }
+            ctx.putImageData(imageData, 0, 0);
+        }
+        
+        function applyGrayscale() {
+            if (!originalImage) return;
+            const imageData = ctx.getImageData(0, 0, processingCanvas.width, processingCanvas.height);
+            const data = imageData.data;
+            for (let i = 0; i < data.length; i += 4) {
+                const avg = (data[i] + data[i + 1] + data[i + 2]) / 3;
+                data[i] = avg; // red
+                data[i + 1] = avg; // green
+                data[i + 2] = avg; // blue
+            }
+            ctx.putImageData(imageData, 0, 0);
+        }
+
+        brightnessSlider.addEventListener('input', (e) => {
+            brightnessValueDisplay.textContent = e.target.value;
+            // A pré-visualização do brilho/contraste pode ser feita em tempo real se desejado,
+            // mas pode ser lento. Por enquanto, só atualiza o valor.
+            // applyImageFilters(); // Opcional: aplicar em tempo real
+            // imagePreview.src = processingCanvas.toDataURL('image/png');
+        });
+
+        contrastSlider.addEventListener('input', (e) => {
+            contrastValueDisplay.textContent = e.target.value;
+            // applyImageFilters(); // Opcional: aplicar em tempo real
+            // imagePreview.src = processingCanvas.toDataURL('image/png');
+        });
+        
+        applyScanEffectButton.addEventListener('click', function() {
+            if (!originalImage) {
+                errorMessage.textContent = "Nenhuma imagem carregada para aplicar o efeito.";
+                return;
+            }
+            statusMessage.textContent = "Aplicando efeito de digitalização...";
+            applyImageFilters(); // Aplica brilho e contraste primeiro
+            applyGrayscale();    // Depois converte para tons de cinza
+            
+            // Atualiza a prévia da imagem com a imagem do canvas processado
+            imagePreview.src = processingCanvas.toDataURL('image/png');
+            imageProcessed = true;
+            statusMessage.textContent = "Efeito de digitalização aplicado. Clique em 'Transformar para PDF' para salvar.";
+            convertToPdfButton.disabled = false;
+        });
+
 
         // Event listener para o botão de converter
         convertToPdfButton.addEventListener('click', function() {
             if (!selectedFile) {
-                errorMessage.textContent = 'Nenhum arquivo selecionado. Por favor, selecione um arquivo .txt primeiro.';
+                errorMessage.textContent = 'Nenhum arquivo selecionado.';
                 return;
             }
 
             statusMessage.textContent = 'Convertendo arquivo...';
             errorMessage.textContent = '';
-            convertToPdfButton.disabled = true; // Desabilita durante a conversão
+            convertToPdfButton.disabled = true;
 
-            const reader = new FileReader();
+            const conversionMode = conversionTypeSelect.value;
 
-            reader.onload = function(event) {
-                const fileContent = event.target.result;
+            if (conversionMode === 'txtToPdf') {
+                const reader = new FileReader();
+                reader.onload = function(event) {
+                    const fileContent = event.target.result;
+                    try {
+                        const { jsPDF } = window.jspdf;
+                        const doc = new jsPDF();
+                        const fontSize = 12;
+                        const margin = 15;
+                        const pageWidth = doc.internal.pageSize.getWidth();
+                        const pageHeight = doc.internal.pageSize.getHeight();
+                        const usableWidth = pageWidth - 2 * margin;
+                        doc.setFontSize(fontSize);
+                        const lines = doc.splitTextToSize(fileContent, usableWidth);
+                        let cursorY = margin;
+                        lines.forEach(line => {
+                            if (cursorY + fontSize * 0.352778 > pageHeight - margin) {
+                                doc.addPage();
+                                cursorY = margin;
+                            }
+                            doc.text(line, margin, cursorY);
+                            cursorY += fontSize * 0.352778 * 1.5;
+                        });
+                        const pdfFileName = selectedFile.name.replace(/\.txt$/, '.pdf');
+                        doc.save(pdfFileName);
+                        statusMessage.textContent = `Arquivo "${pdfFileName}" gerado com sucesso!`;
+                        resetUI();
+                    } catch (error) {
+                        console.error("Erro ao gerar PDF do TXT:", error);
+                        errorMessage.textContent = 'Ocorreu um erro ao gerar o PDF. Verifique o console.';
+                        statusMessage.textContent = '';
+                    } finally {
+                         convertToPdfButton.disabled = true; // Desabilitar após a ação
+                    }
+                };
+                reader.onerror = function() {
+                    errorMessage.textContent = 'Ocorreu um erro ao ler o arquivo de texto.';
+                    statusMessage.textContent = '';
+                    convertToPdfButton.disabled = false;
+                };
+                reader.readAsText(selectedFile);
+
+            } else if (conversionMode === 'imgToScanPdf') {
+                if (!originalImage) {
+                     errorMessage.textContent = 'Nenhuma imagem carregada para converter.';
+                     convertToPdfButton.disabled = false; // Reabilitar se não houver imagem
+                     return;
+                }
+                if (!imageProcessed) {
+                    // Se o usuário não clicou em "Aplicar Efeito", aplicamos um padrão
+                    statusMessage.textContent = "Aplicando efeito de digitalização padrão...";
+                    brightnessSlider.value = 100; // Reset para padrão se não ajustado
+                    contrastSlider.value = 150;   // Um pouco mais de contraste para o padrão
+                    applyImageFilters();
+                    applyGrayscale();
+                    imagePreview.src = processingCanvas.toDataURL('image/png'); // Atualiza a prévia
+                    statusMessage.textContent = "Efeito padrão aplicado. Gerando PDF...";
+                }
 
                 try {
-                    // Inicializa o jsPDF
-                    // window.jspdf.jsPDF é a forma correta de acessar jsPDF quando carregado globalmente
                     const { jsPDF } = window.jspdf;
-                    const doc = new jsPDF();
+                    const imgDataUrl = processingCanvas.toDataURL('image/jpeg', 0.8); // Use JPEG para PDFs, qualidade 0.8
 
-                    // Define o tamanho da fonte e margens (opcional, mas bom para formatação)
-                    const fontSize = 12;
-                    const margin = 15; // em mm
-                    const pageWidth = doc.internal.pageSize.getWidth();
-                    const pageHeight = doc.internal.pageSize.getHeight();
-                    const usableWidth = pageWidth - 2 * margin;
-
-                    doc.setFontSize(fontSize);
-
-                    // Divide o texto em linhas e adiciona ao PDF
-                    // O método splitTextToSize lida com a quebra de linha automaticamente
-                    const lines = doc.splitTextToSize(fileContent, usableWidth);
-                    let cursorY = margin;
-
-                    lines.forEach(line => {
-                        if (cursorY + fontSize * 0.352778 > pageHeight - margin) { // 0.352778 converte pt para mm (aproximadamente)
-                            doc.addPage();
-                            cursorY = margin;
-                        }
-                        doc.text(line, margin, cursorY);
-                        cursorY += fontSize * 0.352778 * 1.5; // Avança o cursor (1.5 é o espaçamento entre linhas)
+                    const doc = new jsPDF({
+                        orientation: processingCanvas.width > processingCanvas.height ? 'l' : 'p', // paisagem ou retrato
+                        unit: 'px', // usar pixels para facilitar o dimensionamento
+                        format: [processingCanvas.width, processingCanvas.height] // tamanho da página igual ao da imagem
                     });
-
-                    // Gera o nome do arquivo PDF
-                    const pdfFileName = selectedFile.name.replace(/\.txt$/, '.pdf');
+                    
+                    doc.addImage(imgDataUrl, 'JPEG', 0, 0, processingCanvas.width, processingCanvas.height);
+                    
+                    const pdfFileName = selectedFile.name.replace(/\.(jpg|jpeg|png)$/i, '_digitalizado.pdf');
                     doc.save(pdfFileName);
-
-                    statusMessage.textContent = `Arquivo "${pdfFileName}" gerado com sucesso! O download deve iniciar automaticamente.`;
-                    fileNameDisplay.textContent = ''; // Limpa o nome do arquivo após a conversão
-                    selectedFile = null; // Limpa o arquivo selecionado
-                    fileInput.value = ''; // Reseta o input de arquivo
-
+                    statusMessage.textContent = `Arquivo "${pdfFileName}" gerado com sucesso!`;
+                    resetUI();
                 } catch (error) {
-                    console.error("Erro ao gerar PDF:", error);
-                    errorMessage.textContent = 'Ocorreu um erro ao gerar o PDF. Verifique o console para mais detalhes.';
+                    console.error("Erro ao gerar PDF da Imagem:", error);
+                    errorMessage.textContent = 'Ocorreu um erro ao gerar o PDF da imagem. Verifique o console.';
                     statusMessage.textContent = '';
                 } finally {
-                    // Reabilita o botão após a tentativa de conversão (mesmo que falhe)
-                    // Mantém desabilitado se nenhum arquivo estiver selecionado
-                     convertToPdfButton.disabled = !selectedFile;
+                    convertToPdfButton.disabled = true; // Desabilitar após a ação
                 }
-            };
-
-            reader.onerror = function() {
-                errorMessage.textContent = 'Ocorreu um erro ao ler o arquivo.';
-                statusMessage.textContent = '';
-                convertToPdfButton.disabled = false; // Reabilita em caso de erro de leitura
-            };
-
-            // Lê o arquivo como texto
-            reader.readAsText(selectedFile);
+            }
         });
+        // Inicializa a UI para o modo padrão (TXT para PDF)
+        conversionTypeSelect.dispatchEvent(new Event('change'));
     </script>
 </body>
 </html>
