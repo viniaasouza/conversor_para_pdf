@@ -1,0 +1,191 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Transformador de TXT para PDF</title>
+    <!-- Incluindo Tailwind CSS -->
+    <script src="https://cdn.tailwindcss.com"></script>
+    <!-- Incluindo a biblioteca jsPDF -->
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
+    <style>
+        /* Estilo para centralizar o conteúdo e dar uma aparência agradável */
+        body {
+            font-family: 'Inter', sans-serif; /* Fonte padrão sugerida */
+        }
+        .container-app {
+            min-height: 100vh;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            background-color: #f3f4f6; /* cinza claro de fundo */
+            padding: 20px;
+        }
+        .card {
+            background-color: white;
+            padding: 2rem; /* Aumentando o padding */
+            border-radius: 0.75rem; /* Bordas mais arredondadas */
+            box-shadow: 0 10px 15px -3px rgba(0, 0, 0, 0.1), 0 4px 6px -2px rgba(0, 0, 0, 0.05);
+            width: 100%;
+            max-width: 500px; /* Largura máxima do card */
+        }
+        .file-input-label {
+            display: block;
+            padding: 0.75rem 1.25rem;
+            border: 2px dashed #cbd5e1; /* Borda tracejada */
+            border-radius: 0.5rem;
+            text-align: center;
+            cursor: pointer;
+            transition: background-color 0.2s ease-in-out, border-color 0.2s ease-in-out;
+        }
+        .file-input-label:hover {
+            background-color: #e9ecef;
+            border-color: #a0aec0;
+        }
+        #fileName {
+            margin-top: 0.5rem;
+            font-style: italic;
+            color: #4a5568; /* cinza escuro */
+        }
+    </style>
+</head>
+<body>
+    <div class="container-app">
+        <div class="card">
+            <h1 class="text-3xl font-bold text-center text-gray-800 mb-8">Transformador de TXT para PDF</h1>
+
+            <div class="mb-6">
+                <label for="fileInput" class="file-input-label">
+                    <span class="text-gray-700">Clique para selecionar um arquivo .txt</span>
+                    <input type="file" id="fileInput" class="hidden" accept=".txt">
+                </label>
+                <p id="fileName" class="text-sm text-center"></p>
+            </div>
+
+            <button id="convertToPdfButton" class="w-full bg-blue-600 hover:bg-blue-700 text-white font-semibold py-3 px-4 rounded-lg shadow-md transition duration-150 ease-in-out disabled:opacity-50 disabled:cursor-not-allowed">
+                Transformar para PDF
+            </button>
+
+            <p id="statusMessage" class="mt-4 text-center text-sm text-green-600"></p>
+            <p id="errorMessage" class="mt-4 text-center text-sm text-red-600"></p>
+        </div>
+
+        <footer class="text-center text-gray-600 mt-8 text-sm">
+            <p>&copy; 2024 Aplicativo de Transformação Simples</p>
+        </footer>
+    </div>
+
+    <script>
+        // Referências aos elementos do DOM
+        const fileInput = document.getElementById('fileInput');
+        const fileNameDisplay = document.getElementById('fileName');
+        const convertToPdfButton = document.getElementById('convertToPdfButton');
+        const statusMessage = document.getElementById('statusMessage');
+        const errorMessage = document.getElementById('errorMessage');
+
+        let selectedFile = null;
+
+        // Inicialmente, desabilitar o botão de conversão
+        convertToPdfButton.disabled = true;
+
+        // Event listener para a seleção de arquivo
+        fileInput.addEventListener('change', function(event) {
+            selectedFile = event.target.files[0];
+            if (selectedFile) {
+                // Verifica se o arquivo é do tipo .txt
+                if (selectedFile.type === "text/plain" || selectedFile.name.endsWith('.txt')) {
+                    fileNameDisplay.textContent = `Arquivo selecionado: ${selectedFile.name}`;
+                    convertToPdfButton.disabled = false; // Habilita o botão
+                    statusMessage.textContent = '';
+                    errorMessage.textContent = '';
+                } else {
+                    fileNameDisplay.textContent = 'Por favor, selecione um arquivo .txt válido.';
+                    errorMessage.textContent = 'Tipo de arquivo inválido. Apenas .txt são permitidos.';
+                    selectedFile = null;
+                    convertToPdfButton.disabled = true; // Mantém/desabilita o botão
+                }
+            } else {
+                fileNameDisplay.textContent = '';
+                selectedFile = null;
+                convertToPdfButton.disabled = true; // Desabilita o botão se nenhum arquivo for selecionado
+            }
+        });
+
+        // Event listener para o botão de converter
+        convertToPdfButton.addEventListener('click', function() {
+            if (!selectedFile) {
+                errorMessage.textContent = 'Nenhum arquivo selecionado. Por favor, selecione um arquivo .txt primeiro.';
+                return;
+            }
+
+            statusMessage.textContent = 'Convertendo arquivo...';
+            errorMessage.textContent = '';
+            convertToPdfButton.disabled = true; // Desabilita durante a conversão
+
+            const reader = new FileReader();
+
+            reader.onload = function(event) {
+                const fileContent = event.target.result;
+
+                try {
+                    // Inicializa o jsPDF
+                    // window.jspdf.jsPDF é a forma correta de acessar jsPDF quando carregado globalmente
+                    const { jsPDF } = window.jspdf;
+                    const doc = new jsPDF();
+
+                    // Define o tamanho da fonte e margens (opcional, mas bom para formatação)
+                    const fontSize = 12;
+                    const margin = 15; // em mm
+                    const pageWidth = doc.internal.pageSize.getWidth();
+                    const pageHeight = doc.internal.pageSize.getHeight();
+                    const usableWidth = pageWidth - 2 * margin;
+
+                    doc.setFontSize(fontSize);
+
+                    // Divide o texto em linhas e adiciona ao PDF
+                    // O método splitTextToSize lida com a quebra de linha automaticamente
+                    const lines = doc.splitTextToSize(fileContent, usableWidth);
+                    let cursorY = margin;
+
+                    lines.forEach(line => {
+                        if (cursorY + fontSize * 0.352778 > pageHeight - margin) { // 0.352778 converte pt para mm (aproximadamente)
+                            doc.addPage();
+                            cursorY = margin;
+                        }
+                        doc.text(line, margin, cursorY);
+                        cursorY += fontSize * 0.352778 * 1.5; // Avança o cursor (1.5 é o espaçamento entre linhas)
+                    });
+
+                    // Gera o nome do arquivo PDF
+                    const pdfFileName = selectedFile.name.replace(/\.txt$/, '.pdf');
+                    doc.save(pdfFileName);
+
+                    statusMessage.textContent = `Arquivo "${pdfFileName}" gerado com sucesso! O download deve iniciar automaticamente.`;
+                    fileNameDisplay.textContent = ''; // Limpa o nome do arquivo após a conversão
+                    selectedFile = null; // Limpa o arquivo selecionado
+                    fileInput.value = ''; // Reseta o input de arquivo
+
+                } catch (error) {
+                    console.error("Erro ao gerar PDF:", error);
+                    errorMessage.textContent = 'Ocorreu um erro ao gerar o PDF. Verifique o console para mais detalhes.';
+                    statusMessage.textContent = '';
+                } finally {
+                    // Reabilita o botão após a tentativa de conversão (mesmo que falhe)
+                    // Mantém desabilitado se nenhum arquivo estiver selecionado
+                     convertToPdfButton.disabled = !selectedFile;
+                }
+            };
+
+            reader.onerror = function() {
+                errorMessage.textContent = 'Ocorreu um erro ao ler o arquivo.';
+                statusMessage.textContent = '';
+                convertToPdfButton.disabled = false; // Reabilita em caso de erro de leitura
+            };
+
+            // Lê o arquivo como texto
+            reader.readAsText(selectedFile);
+        });
+    </script>
+</body>
+</html>
